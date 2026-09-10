@@ -15,6 +15,16 @@
   </p>
 </div>
 
+> **This is `aptabase-plus`**, a downstream distribution of
+> [aptabase/aptabase](https://github.com/aptabase/aptabase) maintained by
+> [@nmehlei](https://github.com/nmehlei). It tracks upstream `main` and
+> adds a stable, API-key-authenticated management API
+> (`/api/v0/apps`, `/api/v0/api-keys`) so tools like
+> [terraform-provider-aptabase](https://github.com/nmehlei/terraform-provider-aptabase)
+> can manage apps without a browser session. Not officially affiliated
+> with Aptabase. See `docs/upstream-proposal.md` for the design and its
+> upstream discussion status.
+
 # About the Project
 
 [Aptabase](https://aptabase.com) is an open-source alternative to Firebase/Google Analytics, specifically built for Mobile, Desktop and Web apps.
