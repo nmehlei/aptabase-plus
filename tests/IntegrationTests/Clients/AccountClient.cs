@@ -2,6 +2,7 @@ using System.Net;
 using AwesomeAssertions;
 using Aptabase.Features.Apps;
 using Aptabase.Features.Authentication;
+using Aptabase.Features.Authentication.ApiKeys;
 using Aptabase.Features.Stats;
 
 namespace Aptabase.IntegrationTests.Clients;
@@ -64,5 +65,22 @@ public class AccountClient
     public async Task<UserAccount?> GetMeAsync()
     {
         return await _client.GetFromJsonAsync<UserAccount>("/api/_auth/me");
+    }
+
+    public async Task<ApiKeyCreated> CreateApiKeyAsync(string name, DateTimeOffset? expiresAt = null)
+    {
+        var response = await _client.PostAsJsonAsync("/api/v0/api-keys", new { name, expiresAt });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<ApiKeyCreated>())!;
+    }
+
+    public async Task<ApiKeySummary[]> ListApiKeysAsync()
+    {
+        return (await _client.GetFromJsonAsync<ApiKeySummary[]>("/api/v0/api-keys"))!;
+    }
+
+    public async Task<HttpResponseMessage> DeleteApiKeyAsync(string keyId)
+    {
+        return await _client.DeleteAsync($"/api/v0/api-keys/{keyId}");
     }
 }
