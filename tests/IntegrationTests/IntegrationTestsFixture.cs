@@ -1,5 +1,6 @@
 using Aptabase.IntegrationTests.Clients;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Aptabase.IntegrationTests;
@@ -24,10 +25,27 @@ public class IntegrationTestsFixture : IAsyncLifetime, IDisposable
         return _factory.CreateClient(opts);
     }
 
+    /// <summary>
+    /// Creates a brand-new registered account with its own cookie session. Use this for
+    /// tests that mutate or delete the account so they don't disturb the shared UserA/UserB.
+    /// </summary>
+    public async Task<AccountClient> CreateFreshAccountAsync(string name)
+    {
+        var account = new AccountClient(CreateClient(), CreateClient);
+        await account.CreateAccount(name, $"{name.Replace(' ', '.').ToLowerInvariant()}.{Guid.NewGuid()}@example.com");
+        return account;
+    }
+
     public T GetHostedService<T>() where T : notnull
     {
         using var scope = _factory.Services.CreateScope();
         return scope.ServiceProvider.GetServices<IHostedService>().OfType<T>().Single();
+    }
+
+    public T GetService<T>() where T : notnull
+    {
+        using var scope = _factory.Services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<T>();
     }
 
     public void Dispose()
@@ -37,10 +55,10 @@ public class IntegrationTestsFixture : IAsyncLifetime, IDisposable
 
     public async Task InitializeAsync()
     {
-        UserA = new AccountClient(CreateClient());
+        UserA = new AccountClient(CreateClient(), CreateClient);
         await UserA.CreateAccount("Jon Snow", $"jon.snow.{Guid.NewGuid()}@got.com");
 
-        UserB = new AccountClient(CreateClient());
+        UserB = new AccountClient(CreateClient(), CreateClient);
         await UserB.CreateAccount("Arya Stark", $"arya.stark.{Guid.NewGuid()}@got.com");
     }
 

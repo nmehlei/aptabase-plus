@@ -151,10 +151,13 @@ public class AuthService : IAuthService
             DELETE FROM public.user_providers 
             WHERE user_id = @userId;
 
-            DELETE FROM public.subscriptions 
+            DELETE FROM public.subscriptions
             WHERE owner_id = @userId;
 
-            DELETE FROM public.users 
+            DELETE FROM public.api_keys
+            WHERE user_id = @userId;
+
+            DELETE FROM public.users
             WHERE id = @userId;
         COMMIT;";
 

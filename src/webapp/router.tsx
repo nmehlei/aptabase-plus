@@ -73,6 +73,10 @@ const router = createBrowserRouter([
         path: "/billing",
         lazy: () => import("./features/billing/BillingPage"),
       },
+      {
+        path: "/api-keys",
+        lazy: () => import("./features/api_keys/ApiKeysPage"),
+      },
     ],
   },
   {},

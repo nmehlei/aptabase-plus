@@ -1,6 +1,8 @@
 using System.Net;
 using AwesomeAssertions;
 using Aptabase.Features.Apps;
+using Aptabase.Features.Authentication;
+using Aptabase.Features.Authentication.ApiKeys;
 using Aptabase.Features.Stats;
 
 namespace Aptabase.IntegrationTests.Clients;
@@ -8,10 +10,12 @@ namespace Aptabase.IntegrationTests.Clients;
 public class AccountClient
 {
     private readonly HttpClient _client;
+    private readonly Func<HttpClient> _clientFactory;
 
-    public AccountClient(HttpClient client)
+    public AccountClient(HttpClient client, Func<HttpClient> clientFactory)
     {
         _client = client;
+        _clientFactory = clientFactory;
     }
 
     public async Task CreateAccount(string name, string email)
@@ -58,5 +62,47 @@ public class AccountClient
     public async Task<SessionTimeline?> GetSessionTimeline(string appId, object sessionId)
     {
         return await _client.GetFromJsonAsync<SessionTimeline>($"/api/_stats/live-session-details?buildMode=release&appId={appId}&sessionId={sessionId}");
+    }
+
+    public async Task<UserAccount?> GetMeAsync()
+    {
+        return await _client.GetFromJsonAsync<UserAccount>("/api/_auth/me");
+    }
+
+    public async Task<ApiKeyCreated> CreateApiKeyAsync(string name, DateTimeOffset? expiresAt = null)
+    {
+        var response = await _client.PostAsJsonAsync("/api/v0/api-keys", new { name, expiresAt });
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<ApiKeyCreated>())!;
+    }
+
+    public async Task<ApiKeySummary[]> ListApiKeysAsync()
+    {
+        return (await _client.GetFromJsonAsync<ApiKeySummary[]>("/api/v0/api-keys"))!;
+    }
+
+    public async Task<HttpResponseMessage> DeleteApiKeyAsync(string keyId)
+    {
+        return await _client.DeleteAsync($"/api/v0/api-keys/{keyId}");
+    }
+
+    public async Task<HttpResponseMessage> DeleteAccountAsync()
+    {
+        return await _client.PostAsync("/api/_auth/account/delete", null);
+    }
+
+    /// <summary>The raw shared cookie-session client (no Authorization header).</summary>
+    public HttpClient CookieClient => _client;
+
+    /// <summary>
+    /// Returns a FRESH client authenticated with the given bearer key. Must not mutate
+    /// the shared cookie-session client, which is reused across the whole test collection.
+    /// </summary>
+    public HttpClient AuthenticatedWith(string apiKey)
+    {
+        var client = _clientFactory();
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+        return client;
     }
 }

@@ -15,6 +15,51 @@
   </p>
 </div>
 
+> **This is `aptabase-plus`**, a downstream distribution of
+> [aptabase/aptabase](https://github.com/aptabase/aptabase) maintained by
+> [@nmehlei](https://github.com/nmehlei). It tracks upstream `main` and
+> adds a stable, API-key-authenticated management API
+> (`/api/v0/apps`, `/api/v0/api-keys`) so tools like
+> [terraform-provider-aptabase](https://github.com/nmehlei/terraform-provider-aptabase)
+> can manage apps without a browser session. Not officially affiliated
+> with Aptabase. See `docs/upstream-proposal.md` for the design and its
+> upstream discussion status.
+
+# Management API (aptabase-plus addition)
+
+This fork adds an API-key-authenticated management API so non-interactive
+tooling (CI, Terraform, scripts) can manage apps without a browser session.
+
+## Claimed routes
+
+`/api/v0/` is **not** a greenfield namespace — upstream already serves
+routes under it (`/api/v0/event`, `/api/v0/events`, `/api/v0/feature-flags/*`,
+and `/api/v0/apps/{appId}/errors[...]`). This fork **extends** that existing,
+upstream-owned prefix with:
+
+| Method | Path |
+| --- | --- |
+| `GET`, `POST` | `/api/v0/apps` |
+| `GET`, `PUT`, `DELETE` | `/api/v0/apps/{appId}` |
+| `GET` | `/api/v0/apps/{appId}/shares` |
+| `PUT`, `DELETE` | `/api/v0/apps/{appId}/shares/{email}` |
+| `GET`, `POST` | `/api/v0/api-keys` |
+| `DELETE` | `/api/v0/api-keys/{keyId}` |
+
+**Known risk:** because `/api/v0/` is shared with upstream, a future upstream
+change under that prefix could collide with these routes on rebase. The
+fork accepts this and pins the paths here so collisions are caught early.
+
+## API keys grant FULL account access
+
+An `aptb_`-prefixed bearer key inherits **all** of its owning user's
+permissions with no way to scope it down. It works on every authenticated
+endpoint — that explicitly **includes deleting the account
+(`POST /api/_auth/account/delete`) and the billing endpoints**, not just
+app/share management. Treat a key exactly like the account password.
+Restricting keys to a subset of routes or to the cookie scheme is
+deliberately out of scope for v1.
+
 # About the Project
 
 [Aptabase](https://aptabase.com) is an open-source alternative to Firebase/Google Analytics, specifically built for Mobile, Desktop and Web apps.
