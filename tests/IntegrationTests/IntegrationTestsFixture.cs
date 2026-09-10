@@ -1,5 +1,6 @@
 using Aptabase.IntegrationTests.Clients;
 using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 
 namespace Aptabase.IntegrationTests;
@@ -28,6 +29,12 @@ public class IntegrationTestsFixture : IAsyncLifetime, IDisposable
     {
         using var scope = _factory.Services.CreateScope();
         return scope.ServiceProvider.GetServices<IHostedService>().OfType<T>().Single();
+    }
+
+    public T GetService<T>() where T : notnull
+    {
+        using var scope = _factory.Services.CreateScope();
+        return scope.ServiceProvider.GetRequiredService<T>();
     }
 
     public void Dispose()

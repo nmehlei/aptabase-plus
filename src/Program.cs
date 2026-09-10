@@ -3,6 +3,7 @@ using Aptabase.Data.Migrations;
 using Aptabase.Features;
 using Aptabase.Features.Apps;
 using Aptabase.Features.Authentication;
+using Aptabase.Features.Authentication.ApiKeys;
 using Aptabase.Features.Billing;
 using Aptabase.Features.Billing.LemonSqueezy;
 using Aptabase.Features.Blob;
@@ -78,8 +79,21 @@ public partial class Program
 
         builder.Services.AddMemoryCache();
         builder.Services.AddHttpContextAccessor();
-        builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-                        .AddCookie(options =>
+        const string cookieOrApiKeyScheme = "CookieOrApiKey";
+
+        builder.Services.AddAuthentication(cookieOrApiKeyScheme)
+                        .AddPolicyScheme(cookieOrApiKeyScheme, "Cookie or API Key", policyOptions =>
+                        {
+                            policyOptions.ForwardDefaultSelector = context =>
+                            {
+                                var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
+                                return !string.IsNullOrEmpty(authHeader) &&
+                                       authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase)
+                                    ? ApiKeyAuthenticationHandler.SchemeName
+                                    : CookieAuthenticationDefaults.AuthenticationScheme;
+                            };
+                        })
+                        .AddCookie(CookieAuthenticationDefaults.AuthenticationScheme, options =>
                         {
                             options.ExpireTimeSpan = TimeSpan.FromDays(365);
                             options.Cookie.Name = "auth-session";
@@ -88,7 +102,10 @@ public partial class Program
                             options.Cookie.IsEssential = true;
                             options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
                             options.Cookie.MaxAge = TimeSpan.FromDays(365);
-                        }).AddGitHub(appEnv).AddGoogle(appEnv);
+                        })
+                        .AddScheme<AuthenticationSchemeOptions, ApiKeyAuthenticationHandler>(
+                            ApiKeyAuthenticationHandler.SchemeName, null)
+                        .AddGitHub(appEnv).AddGoogle(appEnv);
 
         builder.Services.AddRateLimiter(c =>
         {

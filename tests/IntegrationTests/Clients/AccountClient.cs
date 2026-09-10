@@ -1,6 +1,7 @@
 using System.Net;
 using AwesomeAssertions;
 using Aptabase.Features.Apps;
+using Aptabase.Features.Authentication;
 using Aptabase.Features.Stats;
 
 namespace Aptabase.IntegrationTests.Clients;
@@ -58,5 +59,10 @@ public class AccountClient
     public async Task<SessionTimeline?> GetSessionTimeline(string appId, object sessionId)
     {
         return await _client.GetFromJsonAsync<SessionTimeline>($"/api/_stats/live-session-details?buildMode=release&appId={appId}&sessionId={sessionId}");
+    }
+
+    public async Task<UserAccount?> GetMeAsync()
+    {
+        return await _client.GetFromJsonAsync<UserAccount>("/api/_auth/me");
     }
 }
