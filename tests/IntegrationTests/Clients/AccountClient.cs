@@ -10,10 +10,12 @@ namespace Aptabase.IntegrationTests.Clients;
 public class AccountClient
 {
     private readonly HttpClient _client;
+    private readonly Func<HttpClient> _clientFactory;
 
-    public AccountClient(HttpClient client)
+    public AccountClient(HttpClient client, Func<HttpClient> clientFactory)
     {
         _client = client;
+        _clientFactory = clientFactory;
     }
 
     public async Task CreateAccount(string name, string email)
@@ -84,9 +86,21 @@ public class AccountClient
         return await _client.DeleteAsync($"/api/v0/api-keys/{keyId}");
     }
 
+    public async Task<HttpResponseMessage> DeleteAccountAsync()
+    {
+        return await _client.PostAsync("/api/_auth/account/delete", null);
+    }
+
+    /// <summary>The raw shared cookie-session client (no Authorization header).</summary>
+    public HttpClient CookieClient => _client;
+
+    /// <summary>
+    /// Returns a FRESH client authenticated with the given bearer key. Must not mutate
+    /// the shared cookie-session client, which is reused across the whole test collection.
+    /// </summary>
     public HttpClient AuthenticatedWith(string apiKey)
     {
-        var client = _client;
+        var client = _clientFactory();
         client.DefaultRequestHeaders.Authorization =
             new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
         return client;

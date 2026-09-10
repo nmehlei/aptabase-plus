@@ -1,3 +1,4 @@
+using System.Buffers.Text;
 using System.Security.Cryptography;
 using System.Text;
 
@@ -12,10 +13,9 @@ public static class ApiKeyGenerator
     public static (string PlainText, string Hash, string DisplayPrefix) Generate()
     {
         var bytes = RandomNumberGenerator.GetBytes(SecretBytes);
-        var secret = Convert.ToBase64String(bytes)
-            .Replace("+", "")
-            .Replace("/", "")
-            .Replace("=", "");
+        // Proper base64url (RFC 4648 §5): '-'/'_' alphabet, no padding.
+        // Fixed-length for a fixed input size, so the key is regex-validatable.
+        var secret = Base64Url.EncodeToString(bytes);
         var plainText = $"{Prefix}{secret}";
         var hash = Hash(plainText);
         var displayPrefix = plainText[..Math.Min(DisplayPrefixLength, plainText.Length)];

@@ -39,6 +39,22 @@ public class ApiKeysTests
     }
 
     [Fact]
+    public async Task ListApiKeys_OnlyReturnsCallersOwnKeys()
+    {
+        var createdByA = await _fixture.UserA.CreateApiKeyAsync("a-only key");
+        var createdByB = await _fixture.UserB.CreateApiKeyAsync("b-only key");
+
+        var aKeys = await _fixture.UserA.ListApiKeysAsync();
+        var bKeys = await _fixture.UserB.ListApiKeysAsync();
+
+        aKeys.Should().Contain(k => k.Id == createdByA.Id);
+        aKeys.Should().NotContain(k => k.Id == createdByB.Id);
+
+        bKeys.Should().Contain(k => k.Id == createdByB.Id);
+        bKeys.Should().NotContain(k => k.Id == createdByA.Id);
+    }
+
+    [Fact]
     public async Task DeleteApiKey_OwnedByAnotherUser_ReturnsNotFound()
     {
         var created = await _fixture.UserA.CreateApiKeyAsync("user a key");

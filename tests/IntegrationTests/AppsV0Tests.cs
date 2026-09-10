@@ -66,6 +66,57 @@ public class AppsV0Tests
         response.StatusCode.Should().Be(HttpStatusCode.NotFound);
     }
 
+    [Fact]
+    public async Task SharedUser_CanRead_ButCannotMutateOrManageShares()
+    {
+        var keyA = await _fixture.UserA.CreateApiKeyAsync("owner");
+        var clientA = _fixture.UserA.AuthenticatedWith(keyA.Key);
+        var created = (await (await clientA.PostAsJsonAsync("/api/v0/apps", new { name = "Shared App" }))
+            .Content.ReadFromJsonAsync<AppV0>())!;
+
+        var userB = (await _fixture.UserB.GetMeAsync())!;
+        var shareResponse = await clientA.PutAsync($"/api/v0/apps/{created.Id}/shares/{userB.Email}", null);
+        shareResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var keyB = await _fixture.UserB.CreateApiKeyAsync("shared");
+        var clientB = _fixture.UserB.AuthenticatedWith(keyB.Key);
+
+        // Can read
+        (await clientB.GetAsync($"/api/v0/apps/{created.Id}")).StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Cannot mutate
+        (await clientB.PutAsJsonAsync($"/api/v0/apps/{created.Id}", new { name = "Hijacked", icon = "" }))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await clientB.DeleteAsync($"/api/v0/apps/{created.Id}"))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+        (await clientB.PutAsync($"/api/v0/apps/{created.Id}/shares/evil@example.com", null))
+            .StatusCode.Should().Be(HttpStatusCode.NotFound);
+    }
+
+    [Fact]
+    public async Task ListApps_DoesNotLeakOtherUsersApps()
+    {
+        var keyA = await _fixture.UserA.CreateApiKeyAsync("a-list");
+        var clientA = _fixture.UserA.AuthenticatedWith(keyA.Key);
+        var mineOnly = (await (await clientA.PostAsJsonAsync("/api/v0/apps", new { name = "A Only App" }))
+            .Content.ReadFromJsonAsync<AppV0>())!;
+
+        var keyB = await _fixture.UserB.CreateApiKeyAsync("b-list");
+        var clientB = _fixture.UserB.AuthenticatedWith(keyB.Key);
+        var bApps = (await clientB.GetFromJsonAsync<AppV0[]>("/api/v0/apps"))!;
+
+        bApps.Should().NotContain(a => a.Id == mineOnly.Id);
+    }
+
+    [Fact]
+    public async Task CookieSession_WithoutAuthorizationHeader_CanCallV0Endpoint()
+    {
+        // Regression guard: the SPA relies on the policy-scheme falling back to the
+        // cookie scheme when there is no Authorization: Bearer header.
+        var response = await _fixture.UserA.CookieClient.GetAsync("/api/v0/apps");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
     private record AppV0(string Id, string Name, string AppKey);
     private record ShareV0(string Email);
 }

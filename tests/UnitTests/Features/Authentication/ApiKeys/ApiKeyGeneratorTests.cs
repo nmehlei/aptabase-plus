@@ -30,6 +30,21 @@ public class ApiKeyGeneratorTests
     }
 
     [Fact]
+    public void Generate_ProducesFixedLengthBase64UrlKey()
+    {
+        var (plainTextA, _, _) = ApiKeyGenerator.Generate();
+        var (plainTextB, _, _) = ApiKeyGenerator.Generate();
+
+        // 32 random bytes -> 43 chars of unpadded base64url, plus the "aptb_" prefix.
+        plainTextA.Should().HaveLength(ApiKeyGenerator.Prefix.Length + 43);
+        plainTextA.Length.Should().Be(plainTextB.Length);
+
+        var secret = plainTextA[ApiKeyGenerator.Prefix.Length..];
+        secret.Should().MatchRegex("^[A-Za-z0-9_-]{43}$");
+        secret.Should().NotContain("+").And.NotContain("/").And.NotContain("=");
+    }
+
+    [Fact]
     public void Generate_HashMatchesHashOfPlainText()
     {
         var (plainText, hash, _) = ApiKeyGenerator.Generate();

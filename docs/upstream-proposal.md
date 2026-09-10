@@ -20,10 +20,28 @@ non-interactive tooling (CI, Terraform, scripts) to authenticate.
 - New ASP.NET Core authentication scheme selected via a policy scheme
   based on the presence of `Authorization: Bearer` — every existing
   `[IsAuthenticated]` endpoint accepts a key with zero changes.
-- A new, additive `/api/v0/apps` and `/api/v0/api-keys` surface, kept
-  separate from the internal `/api/_apps` routes so the SPA team can keep
-  reshaping those freely without breaking automation that depends on a
-  stable contract.
+- An **extension of the existing, upstream-owned `/api/v0/` prefix** with
+  `/api/v0/apps` and `/api/v0/api-keys` routes, kept separate from the
+  internal `/api/_apps` routes so the SPA team can keep reshaping those
+  freely without breaking automation that depends on a stable contract.
+  This is **not** a new, additive namespace: upstream already serves
+  `/api/v0/event`, `/api/v0/events`, `/api/v0/feature-flags/*`, and
+  `/api/v0/apps/{appId}/errors`, `/errors/types`, `/errors/{errorId}`
+  (`ErrorsController.cs`) under the same prefix.
+
+### Exact paths this fork claims under `/api/v0/`
+
+- `GET`, `POST` `/api/v0/apps`
+- `GET`, `PUT`, `DELETE` `/api/v0/apps/{appId}`
+- `GET` `/api/v0/apps/{appId}/shares`
+- `PUT`, `DELETE` `/api/v0/apps/{appId}/shares/{email}`
+- `GET`, `POST` `/api/v0/api-keys`
+- `DELETE` `/api/v0/api-keys/{keyId}`
+
+**Known risk:** since `/api/v0/` is shared with upstream, a future
+upstream change under that prefix could collide with these routes when
+this fork rebases on `aptabase/main`. Upstreaming this surface (or
+agreeing a reserved sub-prefix) would remove the risk.
 
 ## Status
 

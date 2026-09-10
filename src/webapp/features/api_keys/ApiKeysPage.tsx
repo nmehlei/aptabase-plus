@@ -64,10 +64,11 @@ function Body(props: { apiKeys: ApiKeySummary[] }) {
     <>
       <Alert variant="warning">
         <IconAlertTriangle className="h-4 w-4" />
-        <AlertTitle>API keys grant full access to your account</AlertTitle>
+        <AlertTitle>API keys grant FULL access to your account</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          Anyone with a key can create, modify, or delete apps and shares on your behalf, equivalent to being signed
-          in. Treat keys like passwords and store them somewhere safe.
+          A key is equivalent to being signed in: anyone holding it can do anything you can, including deleting your
+          account and accessing billing, in addition to creating, modifying, or deleting apps and shares. There is no
+          way to scope a key down. Treat keys like passwords and store them somewhere safe.
         </AlertDescription>
       </Alert>
 
