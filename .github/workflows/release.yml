@@ -1,0 +1,71 @@
+name: release
+
+# Every push to main gets a new version and a Docker image: GitVersion
+# (Mainline mode, see GitVersion.yml) computes the next SemVer, this job
+# tags it, then builds/pushes the image in the same job/checkout.
+#
+# Deliberately one workflow, not two: a workflow that pushes a tag using
+# the default GITHUB_TOKEN does NOT trigger other workflows, so tagging
+# and building happen in the same job (see terraform-provider-bugsink's
+# release.yml for the same pattern and rationale).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: "5.x"
+
+      - name: Determine version
+        id: gitversion
+        uses: gittools/actions/gitversion/execute@v3
+
+      - name: Tag this commit
+        id: tag
+        env:
+          VERSION: v${{ steps.gitversion.outputs.semVer }}
+        run: |
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "Tag $VERSION already exists, skipping."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$VERSION" -m "$VERSION"
+          git push origin "$VERSION"
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        if: steps.tag.outputs.skip != 'true'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        if: steps.tag.outputs.skip != 'true'
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ghcr.io/nmehlei/aptabase-plus:${{ steps.tag.outputs.version }}
+            ghcr.io/nmehlei/aptabase-plus:latest
