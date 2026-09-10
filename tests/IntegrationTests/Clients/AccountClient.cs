@@ -83,4 +83,12 @@ public class AccountClient
     {
         return await _client.DeleteAsync($"/api/v0/api-keys/{keyId}");
     }
+
+    public HttpClient AuthenticatedWith(string apiKey)
+    {
+        var client = _client;
+        client.DefaultRequestHeaders.Authorization =
+            new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", apiKey);
+        return client;
+    }
 }
