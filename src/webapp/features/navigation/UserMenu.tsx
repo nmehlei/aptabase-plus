@@ -3,7 +3,7 @@ import { useBillingState } from "@features/billing";
 import { isBillingEnabled } from "@features/env";
 import { ThemeToggle } from "@features/theme";
 import { Menu, Transition } from "@headlessui/react";
-import { IconCreditCard, IconDoorExit } from "@tabler/icons-react";
+import { IconCreditCard, IconDoorExit, IconKey } from "@tabler/icons-react";
 import React, { Fragment } from "react";
 import { Link } from "react-router-dom";
 import { twMerge } from "tailwind-merge";
@@ -79,6 +79,11 @@ export function UserMenu(props: Props) {
               </MenuItem>
             </>
           )}
+          <Divider />
+          <MenuItem href="/api-keys">
+            <IconKey className="w-4 h-4" />
+            <span>API Keys</span>
+          </MenuItem>
           <Divider />
           <MenuItem href="#" onClick={signOut}>
             <IconDoorExit className="w-4 h-4" />
