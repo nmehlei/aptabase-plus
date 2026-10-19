@@ -21,9 +21,14 @@
 > adds a stable, API-key-authenticated management API
 > (`/api/v0/apps`, `/api/v0/api-keys`) so tools like
 > [terraform-provider-aptabase](https://github.com/nmehlei/terraform-provider-aptabase)
-> can manage apps without a browser session. Not officially affiliated
-> with Aptabase. See `docs/upstream-proposal.md` for the design and its
-> upstream discussion status.
+> can manage apps without a browser session, and an optional sign-up
+> allowlist ([`SIGNUP_ALLOWLIST`](#restricting-sign-ups-signup_allowlist)).
+> Not officially affiliated with Aptabase. See `docs/upstream-proposal.md`
+> for the design and its upstream discussion status.
+>
+> **Status: experimental.** It has run stably on a self-hosted instance since
+> September 2026, but has had little wider exposure. Pin the image by digest,
+> take a database backup before upgrading, and use it with caution.
 
 # Management API (aptabase-plus addition)
 
@@ -59,6 +64,29 @@ endpoint — that explicitly **includes deleting the account
 app/share management. Treat a key exactly like the account password.
 Restricting keys to a subset of routes or to the cookie scheme is
 deliberately out of scope for v1.
+
+# Restricting sign-ups (`SIGNUP_ALLOWLIST`)
+
+Upstream Aptabase lets anyone who can reach the instance create an account
+([aptabase/aptabase#64](https://github.com/aptabase/aptabase/issues/64)). This
+fork adds an optional environment variable to restrict that:
+
+```yaml
+SIGNUP_ALLOWLIST: "me@example.com,@mycompany.com"
+```
+
+- Comma-separated entries: a full email (`me@example.com`) or a domain
+  prefixed with `@` (`@mycompany.com`, which does **not** match subdomains).
+  Matching is case-insensitive.
+- **Empty or unset means open registration**, exactly like upstream. To close
+  registration entirely, use a value that matches nothing, such as
+  `@closed.invalid`.
+- Enforced when the registration email is sent and again when an account is
+  created, so GitHub/Google sign-ups and previously issued register links
+  can't bypass it.
+- A blocked address gets the normal success response and **no email**, so the
+  list can't be probed. A warning is logged server-side.
+- **Existing users can always sign in**, even if they are not on the list.
 
 # About the Project
 
