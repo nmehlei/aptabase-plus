@@ -16,5 +16,7 @@ public class CustomWebApplicationFactory<TProgram>
         Environment.SetEnvironmentVariable("SMTP_HOST", "localhost");
         Environment.SetEnvironmentVariable("SMTP_PORT", "1025");
         Environment.SetEnvironmentVariable("SMTP_FROM_ADDRESS", "abc@hi.com");
+        // Sign-ups are restricted to the domains the suite registers with (see SignupAllowlistTests).
+        Environment.SetEnvironmentVariable("SIGNUP_ALLOWLIST", "@example.com,@got.com");
     }
 }
