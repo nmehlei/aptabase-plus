@@ -16,12 +16,21 @@ public class SignupAllowlistTests
         _fixture = fixture;
     }
 
+    // The SignUp rate limiter allows 4 registrations per client IP per hour and the rest of the suite
+    // already uses them all, so these tests present their own (documentation-range) client address.
+    private HttpClient CreateClientFrom(string ip)
+    {
+        var client = _fixture.CreateClient();
+        client.DefaultRequestHeaders.Add("X-Real-Ip", ip);
+        return client;
+    }
+
     [Fact]
     public async Task Register_WithAllowedDomain_SendsMagicLink()
     {
         var email = $"allowed.{Guid.NewGuid()}@example.com";
 
-        var response = await _fixture.CreateClient().PostAsJsonAsync("/api/_auth/register", new { name = "Allowed User", email });
+        var response = await CreateClientFrom("203.0.113.10").PostAsJsonAsync("/api/_auth/register", new { name = "Allowed User", email });
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         (await MailCatcher.GetLinkSentTo(email)).Should().NotBeNullOrEmpty();
@@ -32,7 +41,7 @@ public class SignupAllowlistTests
     {
         var email = $"blocked.{Guid.NewGuid()}@not-allowed.org";
 
-        var response = await _fixture.CreateClient().PostAsJsonAsync("/api/_auth/register", new { name = "Blocked User", email });
+        var response = await CreateClientFrom("203.0.113.11").PostAsJsonAsync("/api/_auth/register", new { name = "Blocked User", email });
 
         // Same response as a successful sign-up so the allowlist can't be probed.
         response.StatusCode.Should().Be(HttpStatusCode.OK);
