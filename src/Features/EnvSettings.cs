@@ -1,4 +1,5 @@
 using System.Text;
+using Aptabase.Features.Authentication;
 
 namespace Aptabase.Features;
 
@@ -78,6 +79,12 @@ public class EnvSettings
     // Variable Name: OAUTH_GOOGLE_CLIENT_SECRET
     public string OAuthGoogleClientSecret { get; private set; } = "";
 
+    // Restricts account creation to these emails / @domains (comma separated).
+    // Empty means anyone can register. Existing users can always sign in.
+    // E.g: me@example.com,@mycompany.com
+    // Variable Name: SIGNUP_ALLOWLIST
+    public string[] SignupAllowlist { get; private set; } = [];
+
     //  The following properties are derived from the other settings
     public bool IsManagedCloud => Region == "EU" || Region == "US";
     public bool IsBillingEnabled => IsManagedCloud || IsDevelopment;
@@ -127,6 +134,8 @@ public class EnvSettings
             // On the container, the etc directory is mounted at ./etc
             // But during development, it's at ../etc
             EtcDirectoryPath = Directory.Exists("./etc") ? "./etc" : "../etc",
+
+            SignupAllowlist = SignupPolicy.Parse(Get("SIGNUP_ALLOWLIST")),
 
             ErrorQuotaEnabled = GetBool("ERROR_QUOTA_ENABLED")
         };

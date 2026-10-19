@@ -74,6 +74,13 @@ public class AuthService : IAuthService
             return;
         }
 
+        if (!SignupPolicy.IsAllowed(email, _env.SignupAllowlist))
+        {
+            // Respond like a success so the allowlist can't be probed; no email is sent.
+            _logger.LogWarning("Registration blocked by SIGNUP_ALLOWLIST");
+            return;
+        }
+
         var token = _tokenManager.CreateAuthToken(AuthTokenType.Register, name, email);
 
         await _emailClient.SendEmailAsync(email, "Confirm your registration", "Register", new()
@@ -85,6 +92,10 @@ public class AuthService : IAuthService
 
     public async Task<UserAccount> CreateAccountAsync(string name, string email, CancellationToken cancellationToken)
     {
+        // Enforced here as well so OAuth sign-ups and register tokens issued earlier can't bypass it.
+        if (!SignupPolicy.IsAllowed(email, _env.SignupAllowlist))
+            throw new InvalidOperationException("Account creation blocked by SIGNUP_ALLOWLIST");
+
         var userId = NanoId.New();
         var cmd = new CommandDefinition(
             "INSERT INTO users (id, name, email, free_quota) VALUES (@userId, @name, @email, 20000)",
