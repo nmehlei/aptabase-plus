@@ -1,0 +1,94 @@
+name: upstream-sync
+
+# Keeps this fork a drop-in replacement for aptabase/aptabase: on manual dispatch
+# (gh workflow run upstream-sync.yml), merge upstream main onto a branch. A clean merge opens a PR (CI is dispatched
+# explicitly because pushes/PRs made with GITHUB_TOKEN don't trigger workflows);
+# a conflicting merge opens ONE issue listing the conflicting files instead.
+# The PR is never merged automatically - merging publishes a new image
+# (release.yml), and a human should read the drop-in report first.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  actions: write
+
+env:
+  UPSTREAM: https://github.com/aptabase/aptabase.git
+  BRANCH: sync/upstream
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Fetch upstream
+        run: |
+          git remote add upstream "$UPSTREAM"
+          git fetch -q upstream main
+          BEHIND=$(git rev-list --count HEAD..upstream/main)
+          echo "behind=$BEHIND" >> "$GITHUB_ENV"
+          echo "upstream is $BEHIND commit(s) ahead"
+
+      - name: Skip if an open sync PR already exists
+        if: env.behind != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          N=$(gh pr list --head "$BRANCH" --state open --json number -q 'length')
+          if [ "$N" != "0" ]; then echo "behind=0" >> "$GITHUB_ENV"; echo "open sync PR exists, nothing to do"; fi
+
+      - name: Merge upstream
+        if: env.behind != '0'
+        run: |
+          git config user.name "aptabase-plus sync"
+          git config user.email "actions@users.noreply.github.com"
+          git checkout -B "$BRANCH" main
+          if git merge --no-ff --no-edit upstream/main; then
+            echo "conflicts=" >> "$GITHUB_ENV"
+          else
+            {
+              echo "conflicts<<EOF"
+              git diff --name-only --diff-filter=U
+              echo "EOF"
+            } >> "$GITHUB_ENV"
+            git merge --abort
+          fi
+
+      - name: Drop-in report
+        if: env.behind != '0' && env.conflicts == ''
+        run: bash scripts/dropin-report.sh upstream/main HEAD^1 > /tmp/report.md
+
+      - name: Open PR and dispatch CI
+        if: env.behind != '0' && env.conflicts == ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git push -f origin "$BRANCH"
+          gh pr create --base main --head "$BRANCH" \
+            --title "sync: merge upstream aptabase main ($behind commits)" \
+            --body-file /tmp/report.md
+          gh workflow run ci.yml --ref "$BRANCH"
+
+      - name: Open conflict issue
+        if: env.behind != '0' && env.conflicts != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          EXISTING=$(gh issue list --label upstream-sync --state open --json number -q 'length')
+          if [ "$EXISTING" = "0" ]; then
+            gh label create upstream-sync --color BFD4F2 2>/dev/null || true
+            gh issue create --label upstream-sync \
+              --title "Upstream sync has merge conflicts ($behind commits behind)" \
+              --body "A merge of aptabase/aptabase main conflicts in:
+
+          $conflicts
+
+          Resolve locally: \`git fetch upstream && git checkout -b sync/upstream-manual main && git merge upstream/main\`, then open a PR. Run \`scripts/dropin-report.sh upstream/main main\` for the drop-in report."
+          fi
