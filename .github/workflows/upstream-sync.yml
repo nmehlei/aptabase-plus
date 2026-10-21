@@ -1,15 +1,13 @@
 name: upstream-sync
 
-# Keeps this fork a drop-in replacement for aptabase/aptabase: every day, merge
-# upstream main onto a branch. A clean merge opens a PR (CI is dispatched
+# Keeps this fork a drop-in replacement for aptabase/aptabase: on manual dispatch
+# (gh workflow run upstream-sync.yml), merge upstream main onto a branch. A clean merge opens a PR (CI is dispatched
 # explicitly because pushes/PRs made with GITHUB_TOKEN don't trigger workflows);
 # a conflicting merge opens ONE issue listing the conflicting files instead.
 # The PR is never merged automatically - merging publishes a new image
 # (release.yml), and a human should read the drop-in report first.
 
 on:
-  schedule:
-    - cron: "17 5 * * *"
   workflow_dispatch:
 
 permissions:
@@ -88,7 +86,7 @@ jobs:
             gh label create upstream-sync --color BFD4F2 2>/dev/null || true
             gh issue create --label upstream-sync \
               --title "Upstream sync has merge conflicts ($behind commits behind)" \
-              --body "A daily merge of aptabase/aptabase main conflicts in:
+              --body "A merge of aptabase/aptabase main conflicts in:
 
           $conflicts
 
