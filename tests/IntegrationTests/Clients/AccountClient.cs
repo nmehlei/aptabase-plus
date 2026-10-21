@@ -20,7 +20,14 @@ public class AccountClient
 
     public async Task CreateAccount(string name, string email)
     {
-        var response = await _client.PostAsJsonAsync("/api/_auth/register", new { name, email });
+        // The SignUp rate limiter allows 4 registrations per client IP per hour and the suite
+        // registers more accounts than that, so every registration presents its own address.
+        var register = new HttpRequestMessage(HttpMethod.Post, "/api/_auth/register")
+        {
+            Content = JsonContent.Create(new { name, email })
+        };
+        register.Headers.Add("X-Real-Ip", Guid.NewGuid().ToString());
+        var response = await _client.SendAsync(register);
         response.StatusCode.Should().Be(HttpStatusCode.OK);
 
         var confirmUrl = await MailCatcher.GetLinkSentTo(email);
@@ -36,6 +43,11 @@ public class AccountClient
         var apps = await _client.GetFromJsonAsync<Application[]>("/api/_apps");
         var app = apps?.FirstOrDefault(x => x.Name == name);
         return app ?? throw new Exception("No app found");
+    }
+
+    public async Task<HttpResponseMessage> Get(string url)
+    {
+        return await _client.GetAsync(url);
     }
 
     public async Task<HttpResponseMessage> GetKeyMetrics(string appId, string period)

@@ -36,16 +36,15 @@ public class IntegrationTestsFixture : IAsyncLifetime, IDisposable
         return account;
     }
 
+    public T GetService<T>() where T : notnull
+    {
+        return _factory.Services.GetRequiredService<T>();
+    }
+
     public T GetHostedService<T>() where T : notnull
     {
         using var scope = _factory.Services.CreateScope();
         return scope.ServiceProvider.GetServices<IHostedService>().OfType<T>().Single();
-    }
-
-    public T GetService<T>() where T : notnull
-    {
-        using var scope = _factory.Services.CreateScope();
-        return scope.ServiceProvider.GetRequiredService<T>();
     }
 
     public void Dispose()
