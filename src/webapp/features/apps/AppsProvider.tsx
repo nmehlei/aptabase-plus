@@ -28,7 +28,9 @@ const AppsContext = createContext<AppsContextType | undefined>(undefined);
 
 export function AppsProvider(props: Props) {
   const location = useLocation();
-  const [buildMode, setBuildMode] = useLocalStorage<BuildMode>("buildmode", "debug");
+  // Release first: debug mode reads the `<appId>_DEBUG` partition, which only isDebug=true SDK builds write to.
+  // Defaulting to it showed an empty dashboard (0 users, 0 events) for apps whose events are all release events.
+  const [buildMode, setBuildMode] = useLocalStorage<BuildMode>("buildmode", "release");
 
   const { isLoading, isError, data, refetch } = useQuery({ queryKey: ["apps"], queryFn: listApps });
 
